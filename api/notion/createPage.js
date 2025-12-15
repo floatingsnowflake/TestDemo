@@ -6,21 +6,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // ===== 预检请求 =====
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   try {
-    if (!req.body) {
-      return res.status(400).json({ error: 'Empty body' });
+    const rawBody = req.body;
+
+    if (!rawBody) {
+      return res.status(400).json({ error: 'EMPTY_BODY' });
     }
 
-    // 🔥 关键修复点：确保是对象
     const body =
-      typeof req.body === 'string'
-        ? JSON.parse(req.body)
-        : req.body;
+      typeof rawBody === 'string'
+        ? JSON.parse(rawBody)
+        : rawBody;
+
+    console.log('📦 BODY:', body);
 
     const notionRes = await fetch('https://api.notion.com/v1/pages', {
       method: 'POST',
@@ -34,21 +36,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const text = await notionRes.text();
 
-    // 🔥 Notion 报错时直接透传，方便你调试
     if (!notionRes.ok) {
-      return res.status(notionRes.status).json({
-        error: 'Notion API error',
-        detail: text
-      });
+      console.error('❌ Notion Error:', text);
+      return res.status(notionRes.status).send(text);
     }
 
-    return res.status(200).json(JSON.parse(text));
+    return res.status(200).send(text);
   }
   catch (e: any) {
-    console.error('🔥 Function error:', e);
+    console.error('🔥 FUNCTION CRASH:', e);
     return res.status(500).json({
-      error: 'FUNCTION_ERROR',
-      message: e.message
+      error: 'FUNCTION_CRASH',
+      message: e.message,
+      stack: e.stack
     });
   }
 }
