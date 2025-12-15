@@ -1,6 +1,4 @@
-import type { VercelRequest, VercelResponse } from 'vercel';
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req, res) {
   // ===== CORS =====
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -11,16 +9,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const rawBody = req.body;
-
-    if (!rawBody) {
+    if (!req.body) {
       return res.status(400).json({ error: 'EMPTY_BODY' });
     }
 
+    // Vercel 里 body 可能是 string
     const body =
-      typeof rawBody === 'string'
-        ? JSON.parse(rawBody)
-        : rawBody;
+      typeof req.body === 'string'
+        ? JSON.parse(req.body)
+        : req.body;
 
     console.log('📦 BODY:', body);
 
@@ -37,18 +34,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const text = await notionRes.text();
 
     if (!notionRes.ok) {
-      console.error('❌ Notion Error:', text);
+      console.error('❌ Notion API Error:', text);
       return res.status(notionRes.status).send(text);
     }
 
     return res.status(200).send(text);
   }
-  catch (e: any) {
+  catch (e) {
     console.error('🔥 FUNCTION CRASH:', e);
     return res.status(500).json({
       error: 'FUNCTION_CRASH',
-      message: e.message,
-      stack: e.stack
+      message: e.message
     });
   }
 }
